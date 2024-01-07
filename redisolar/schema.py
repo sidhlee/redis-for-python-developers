@@ -25,6 +25,7 @@ class FlatCoordinateSchema(marshmallow.Schema):
             in_data['coordinate'] = {'lat': lat, 'lng': lng}
         return in_data
 
+    # Flatten the Coordinate object after serializing.
     @marshmallow.post_dump
     def nested_to_flat(self, out_data, **kwargs):
         coordinate = out_data.pop('coordinate', None)
