@@ -6,21 +6,26 @@ This is the sample application codebase for the Redis University course [RU102PY
 
 ![Preview of running application - Solar Site Map with markers](preview.png)
 
+### Running the project with Docker
+
+Due to the conflict between the project requirement (eg. python 3.8.2 and cryptocurrency package) and my M1 machine with ARM64 architecture, I had to build a cross-platform image using the Docker's [buildx](https://docs.docker.com/build/architecture/#buildx).
+
+Follow these steps to run the project in docker:
+
+1. Run `docker-compose up` to spin up the test and redis container.
+2. Shell into the project with `docker exec -it test /bin/bash`
+3. Run the targets in the Makefile to install dependencies, run tests, start the backend/frontend server etc..
+
 ### Prerequisites
 
 To start and run this application, you will need:
 
 * [Python 3.8](https://www.python.org/downloads/) (**Note**: It must be version 3.8).  We suggest using [pyenv](https://github.com/pyenv/pyenv) to manage multiple versions of Python
 * Access to a local or remote installation of [Redis](https://redis.io/download) version 5 or newer
-* Your Redis installation should have the RedisTimeSeries module installed. You can find the installation instructions at: https://oss.redis.com/redistimeseries/#setup
+* Your Redis installation should have the RedisTimeSeries module installed. You can find the installation instructions at: <https://oss.redis.com/redistimeseries/#setup>
 
 **Note**: If you don't have Redis installed but do have Docker or Podman and want to get started quickly,
 run `make timeseries-docker` or `make timeseries-podman`. This starts a Redis container with RedisTimeSeries installed. (Podman is a Docker replacement for Fedora users.)
-
-If you're using Windows, check out the following resources for help with running Redis:
-
-* [Redis Labs Blog - Running Redis on Windows 10](https://redis.com/blog/redis-on-windows-10/)
-* [Microsoft - Windows Subsystem for Linux Installation Guide for Windows 10](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
 
 ### Setting up Python dependencies with make
 
@@ -67,7 +72,7 @@ to run on localhost at port 6379 without password protection.
 This project uses the RedisTimeSeries module. You can either install it manually
 or run Redis with the module enabled using Docker.
 
-Check the project's web site for installation instructions: https://oss.redis.com/redistimeseries/
+Check the project's web site for installation instructions: <https://oss.redis.com/redistimeseries/>
 
 **Note**: As mentioned earlier in this document, if you have Docker installed and want to get started quickly, run
 `make timeseries-docker`, which starts a Docker container running Redis with the
@@ -82,7 +87,7 @@ password, make sure to set the `REDISOLAR_REDIS_USERNAME` and/or
 
 You can set these on the command line like so:
 
-    $ REDISOLAR_REDIS_USERNAME=your-username make load
+    REDISOLAR_REDIS_USERNAME=your-username make load
 
 However, doing so keeps a record of these variables around in your shell history.
 
@@ -102,8 +107,8 @@ make sure you follow your company's guidelines for credentials management.
 **Important note**: If you are not using Redis on localhost at port 6379, you
 need to update the following files:
 
-- `redisolar/instance/dev.cfg`
-- `redisolar/instance/testing.cfg`
+* `redisolar/instance/dev.cfg`
+* `redisolar/instance/testing.cfg`
 
 In the referenced files, change the values of `REDIS_HOST` and `REDIS_PORT` to
 the correct values for your Redis instance.
@@ -121,8 +126,8 @@ tests finish, the test runner deletes all the keys prefixed with "test:".
 You can change the prefix used for keys by changing the `REDIS_KEY_PREFIX`
 option in the following files:
 
-- `redisolar/instance/dev.cfg`
-- `redisolar/instance/testing.cfg`
+* `redisolar/instance/dev.cfg`
+* `redisolar/instance/testing.cfg`
 
 ## Loading sample data
 
@@ -142,7 +147,7 @@ Run the development server with `make dev`.
 with geo features enabled, set the option `USE_GEO_SITE_API` in
 `redisolar/instance/dev.cfg` to `True`.
 
-After running `make dev` access http://localhost:8081 to see the app.
+After running `make dev` access <http://localhost:8081> to see the app.
 
 **Don't see any data?**
 The first time you run `make dev`, you may see a map with nothing on it. In
@@ -157,11 +162,11 @@ If you need to override command-line flags when running Flask, you can use the `
 
 To do, first activate the project's virtual environment:
 
-    $ source env/bin/activate
+    source env/bin/activate
 
 Then run the `flask` command:
 
-    $ FLASK_APP=redisolar flask run --port=8001
+    FLASK_APP=redisolar flask run --port=8001
 
 ## Running tests
 
@@ -172,12 +177,12 @@ a virtualenv automatically if you have not already done so.
 
 You can run individual tests by calling `pytest` manually. To do, first activate the project's virtual environment:
 
-    $ source env/bin/activate
+    source env/bin/activate
 
 Then run `pytest` with whatever options you want. For example, here is how you
 run a specific test:
 
-    $ pytest -k test_set_get
+    pytest -k test_set_get
 
 ## Optional (but Recommended): RedisInsight
 

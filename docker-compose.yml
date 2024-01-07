@@ -1,10 +1,18 @@
-version: "3"
+version: '3'
 services:
   test:
     container_name: test
-    build: .
+    # cross-platform build with buildx for amd64 and arm64
+    image: sidhlee/ru102py-buildx
     depends_on:
       - redis
+    # Bind mount for local development
+    volumes:
+      - .:/src
+    # Run the container in the background and tail the logs
+    # so that we can shell into the container
+    # and run make commands
+    command: tail -f /dev/null
 
   redis:
     container_name: redis
