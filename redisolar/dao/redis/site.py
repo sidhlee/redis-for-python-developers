@@ -59,4 +59,5 @@ class SiteDaoRedis(SiteDaoBase, RedisDaoBase):
         ]
         # END Challenge #1
 
+        # Set comprehension. (dict comprehension has key:value for item in iterable)
         return {FlatSiteSchema().load(site_hash) for site_hash in site_hashes}

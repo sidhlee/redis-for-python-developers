@@ -20,19 +20,21 @@ DEFAULT_SITES_FILENAME = os.path.join(ROOT_DIR, "fixtures", "sites.json")
     "-f",
     "--filename",
     default=DEFAULT_SITES_FILENAME,
-    help="The filename containing the JSON to load. (default: fixtures/sites.json)")
+    help="The filename containing the JSON to load. (default: fixtures/sites.json)",
+)
 @click.option(
     "-t",
     "--delete-keys",
     default=False,
     is_flag=True,
-    help="Delete any existing redisolar keys before loading")
+    help="Delete any existing redisolar keys before loading",
+)
 def load(filename, delete_keys):
     """Load the specified JSON file into Redis"""
     conf = current_app.config
-    hostname = conf['REDIS_HOST']
-    port = conf['REDIS_PORT']
-    key_prefix = conf['REDIS_KEY_PREFIX']
+    hostname = conf["REDIS_HOST"]
+    port = conf["REDIS_PORT"]
+    key_prefix = conf["REDIS_KEY_PREFIX"]
     key_schema = KeySchema(key_prefix)
     client = get_redis_connection(hostname=hostname, port=port)
     site_dao = SiteDaoRedis(client, key_schema)
@@ -42,10 +44,12 @@ def load(filename, delete_keys):
         for key in client.scan_iter(f"{key_prefix}:*"):
             client.delete(key)
 
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         sites = [FlatSiteSchema().load(d) for d in json.loads(f.read())]
 
-    sites_bar = Bar('Loading sites', max=len(sites))
+    sites_bar = Bar("Loading sites", max=len(sites))
+    # Redis pipeline is atomic by default.
+    # If we don't care about atomicity, we can set transaction=False to improve performance.
     p = client.pipeline(transaction=False)
     for site in sites:
         sites_bar.next()
@@ -55,7 +59,7 @@ def load(filename, delete_keys):
 
     print()
     sample_generator = SampleDataGenerator(client, sites, 1, key_schema)
-    readings_bar = Bar('Generating metrics data', max=sample_generator.size)
+    readings_bar = Bar("Generating metrics data", max=sample_generator.size)
     p = client.pipeline(transaction=False)
     for _ in sample_generator.generate(p):
         readings_bar.next()
