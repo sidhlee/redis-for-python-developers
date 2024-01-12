@@ -11,6 +11,7 @@ from webargs.flaskparser import use_args
 from redisolar.api.base import DaoResource
 from redisolar.models import MeterReading
 from redisolar.schema import MeterReadingsSchema
+from redisolar.dao.redis.meter_reading import MeterReadingDaoRedis
 
 MAX_RECENT_FEEDS = 1000
 DEFAULT_RECENT_FEEDS = 100
@@ -27,30 +28,35 @@ def get_feed_count(count: Optional[int]):
 
 class GlobalMeterReadingResource(Resource):
     """A RESTful resource representing meter readings for all sites."""
-    def __init__(self, meter_reading_dao: Any, feed_dao: Any):
+
+    def __init__(self, meter_reading_dao: MeterReadingDaoRedis, feed_dao: Any):
         self.meter_reading_dao = meter_reading_dao
         self.feed_dao = feed_dao
 
+    # The use_args decorator will parse the request body as JSON and pass it to
+    # the decorated function as a dictionary.
+    # The MeterReadingsSchema will validate the request body.
     @use_args(MeterReadingsSchema)
     def post(self, meter_readings: Dict[str, List[MeterReading]]) -> Tuple[str, int]:
         """Create a new meter reading."""
-        for reading in meter_readings['readings']:
+        for reading in meter_readings["readings"]:
             self.meter_reading_dao.add(reading)
         return "Accepted", 202
 
     @use_args({"count": fields.Int()}, location="query")
     def get(self, args: Dict[str, int]) -> Dict[str, Dict]:
         """Get a list of meter readings."""
-        count = args.get('count')
+        count = args.get("count")
         readings = self.feed_dao.get_recent_global(get_feed_count(count))
         return MeterReadingsSchema().dump({"readings": readings})
 
 
 class SiteMeterReadingResource(DaoResource):
     """A RESTful resource representing meter readings for specific sites."""
+
     @use_args({"count": fields.Int()}, location="query")
     def get(self, args, site_id):
         """Get recent meter readings for a specific site."""
-        count = args.get('count')
+        count = args.get("count")
         readings = self.dao.get_recent_for_site(site_id, get_feed_count(count))
         return MeterReadingsSchema().dump({"readings": readings})
