@@ -18,12 +18,14 @@ class SiteStatsNotFound(Exception):
 
 class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
     """Persists and queries SiteStats in Redis."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.compare_and_update_script = CompareAndUpdateScript(self.redis)
 
-    def find_by_id(self, site_id: int, day: datetime.datetime = None,
-                   **kwargs) -> SiteStats:
+    def find_by_id(
+        self, site_id: int, day: datetime.datetime = None, **kwargs
+    ) -> SiteStats:
         if day is None:
             day = datetime.datetime.now()
 
@@ -41,6 +43,9 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
         self.redis.hincrby(key, SiteStats.COUNT, 1)
         self.redis.expire(key, WEEK_SECONDS)
 
+        # This get and set needs to be atomic to avoid race conditions
+        # eg. two requests get the same max_wh, both updates, but the
+        # second update is lower than the first.
         max_wh = self.redis.hget(key, SiteStats.MAX_WH)
         if not max_wh or reading.wh_generated > float(max_wh):
             self.redis.hset(key, SiteStats.MAX_WH, reading.wh_generated)
@@ -53,8 +58,12 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
         if not max_capacity or reading.current_capacity > float(max_capacity):
             self.redis.hset(key, SiteStats.MAX_CAPACITY, reading.wh_generated)
 
-    def _update_optimized(self, key: str, meter_reading: MeterReading,
-                          pipeline: redis.client.Pipeline = None) -> None:
+    def _update_optimized(
+        self,
+        key: str,
+        meter_reading: MeterReading,
+        pipeline: redis.client.Pipeline = None,
+    ) -> None:
         execute = False
         if pipeline is None:
             pipeline = self.redis.pipeline()
@@ -67,8 +76,9 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
             pipeline.execute()
 
     def update(self, meter_reading: MeterReading, **kwargs) -> None:
-        key = self.key_schema.site_stats_key(meter_reading.site_id,
-                                             meter_reading.timestamp)
+        key = self.key_schema.site_stats_key(
+            meter_reading.site_id, meter_reading.timestamp
+        )
         # Remove for Challenge #3
         self._update_basic(key, meter_reading)
 
