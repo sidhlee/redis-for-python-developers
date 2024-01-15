@@ -24,22 +24,27 @@ def readings(metric_dao) -> Generator[List[MeterReading], None, None]:
     time = NOW
     for i in range(72 * 60):
         readings.append(
-            MeterReading(site_id=1,
-                         temp_c=i * 1.0,
-                         wh_used=i * 1.0,
-                         wh_generated=i * 1.0,
-                         timestamp=time))
+            MeterReading(
+                site_id=TESTING_SITE_ID,
+                temp_c=i * 1.0,
+                wh_used=i * 1.0,
+                wh_generated=i * 1.0,
+                timestamp=time,
+            )
+        )
         time = time - datetime.timedelta(minutes=1)
     yield readings
 
 
-def _test_insert_and_retrieve(readings: List[MeterReading],
-                              metric_dao: MetricDaoRedis, limit: int):
+def _test_insert_and_retrieve(
+    readings: List[MeterReading], metric_dao: MetricDaoRedis, limit: int
+):
     for reading in readings:
         metric_dao.insert(reading)
 
-    measurements = metric_dao.get_recent(TESTING_SITE_ID, MetricUnit.WH_GENERATED,
-                                         NOW, limit)
+    measurements = metric_dao.get_recent(
+        TESTING_SITE_ID, MetricUnit.WH_GENERATED, NOW, limit
+    )
     assert len(measurements) == limit
 
     i = limit
@@ -49,16 +54,20 @@ def _test_insert_and_retrieve(readings: List[MeterReading],
 
 
 # Challenge #2
-@pytest.mark.skip("Remove for challenge #2")
+# @pytest.mark.skip("Remove for challenge #2")
 def test_small(metric_dao, readings):
     _test_insert_and_retrieve(readings, metric_dao, 1)
 
 
-@pytest.mark.skip("Remove for challenge #2")
+# @pytest.mark.skip("Remove for challenge #2")
 def test_one_day(metric_dao, readings):
     _test_insert_and_retrieve(readings, metric_dao, 60 * 24)
 
 
-@pytest.mark.skip("Remove for challenge #2")
+# @pytest.mark.skip("Remove for challenge #2")
 def test_multiple_days(metric_dao, readings):
     _test_insert_and_retrieve(readings, metric_dao, 60 * 70)
+
+
+def test_multiple_days_not_multiple_of_24(metric_dao, readings):
+    _test_insert_and_retrieve(readings, metric_dao, 60 * 24 * 2 - 1)
