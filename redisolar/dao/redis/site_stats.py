@@ -43,7 +43,7 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
         self.redis.hincrby(key, SiteStats.COUNT, 1)
         self.redis.expire(key, WEEK_SECONDS)
 
-        # This get and set needs to be atomic to avoid race conditions
+        # This CAS(compare-and-set) operations needs to be atomic to avoid race conditions
         # eg. two requests get the same max_wh, both updates, but the
         # second update is lower than the first.
         max_wh = self.redis.hget(key, SiteStats.MAX_WH)
@@ -70,6 +70,31 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
             execute = True
 
         # START Challenge #3
+        reporting_time = datetime.datetime.utcnow().isoformat()
+        pipeline.hset(key, SiteStats.LAST_REPORTING_TIME, reporting_time)
+        pipeline.hincrby(key, SiteStats.COUNT, 1)
+        pipeline.expire(key, WEEK_SECONDS)
+
+        script = CompareAndUpdateScript(self.redis)
+        common_kwargs = {"pipeline": pipeline, "key": key}
+        script.update_if_greater(
+            **common_kwargs,
+            field=SiteStats.MAX_WH,
+            value=meter_reading.wh_generated,
+        )
+        script.update_if_less(
+            **common_kwargs,
+            field=SiteStats.MIN_WH,
+            value=meter_reading.wh_generated,
+        )
+        script.update_if_greater(
+            **common_kwargs,
+            field=SiteStats.MAX_CAPACITY,
+            value=meter_reading.current_capacity,
+            set_field=SiteStats.MAX_CAPACITY,
+            set_value=meter_reading.wh_generated,
+        )
+
         # END Challenge #3
 
         if execute:
@@ -80,8 +105,8 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
             meter_reading.site_id, meter_reading.timestamp
         )
         # Remove for Challenge #3
-        self._update_basic(key, meter_reading)
+        # self._update_basic(key, meter_reading)
 
         # Uncomment the following two lines for Challenge #3
-        # pipeline = kwargs.get('pipeline')
-        # self._update_optimized(key, meter_reading, pipeline)
+        pipeline = kwargs.get("pipeline")
+        self._update_optimized(key, meter_reading, pipeline)

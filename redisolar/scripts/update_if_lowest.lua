@@ -1,7 +1,7 @@
 -- Lua script to compare set if lower
 -- key: the name a Redis string storing a number
 -- new: a number which, if smaller, will replace the existing number
-local key = KEYS[1]
+local key = KEYS[1] -- Lua arrays are 1-based
 local new = ARGV[1]
 local current = redis.call('GET', key)
 if (current == false) or
