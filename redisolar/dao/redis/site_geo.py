@@ -14,18 +14,22 @@ CAPACITY_THRESHOLD = 0.2
 
 class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
     """SiteGeoDaoRedis persists and queries Sites in Redis."""
+
     def insert(self, site: Site, **kwargs):
         """Insert a Site into Redis."""
         hash_key = self.key_schema.site_hash_key(site.id)
-        client = kwargs.get('pipeline', self.redis)
+        client = kwargs.get("pipeline", self.redis)
         client.hset(hash_key, mapping=FlatSiteSchema().dump(site))  # type: ignore
 
         if not site.coordinate:
             raise ValueError("Site coordinates are required for Geo insert")
 
         client.geoadd(  # type: ignore
-            self.key_schema.site_geo_key(), site.coordinate.lng, site.coordinate.lat,
-            site.id)
+            self.key_schema.site_geo_key(),
+            site.coordinate.lng,
+            site.coordinate.lat,
+            site.id,
+        )
 
     def insert_many(self, *sites: Site, **kwargs) -> None:
         """Insert multiple Sites into Redis."""
@@ -44,8 +48,12 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
 
     def _find_by_geo(self, query: GeoQuery, **kwargs) -> Set[Site]:
         site_ids = self.redis.georadius(  # type: ignore
-            self.key_schema.site_geo_key(), query.coordinate.lng, query.coordinate.lat,
-            query.radius, query.radius_unit.value)
+            self.key_schema.site_geo_key(),
+            query.coordinate.lng,
+            query.coordinate.lat,
+            query.radius,
+            query.radius_unit.value,
+        )
         sites = [
             self.redis.hgetall(self.key_schema.site_hash_key(site_id))
             for site_id in site_ids
@@ -91,9 +99,14 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
         site_ids = self.redis.zrange(self.key_schema.site_geo_key(), 0, -1)
         sites = set()
 
+        p = self.redis.pipeline(transaction=False)
+
         for site_id in site_ids:
             key = self.key_schema.site_hash_key(site_id)
-            site_hash = self.redis.hgetall(key)
+            p.hgetall(key)
+        site_hashes = p.execute()
+
+        for site_hash in site_hashes:
             sites.add(FlatSiteSchema().load(site_hash))
 
         return sites
