@@ -7,11 +7,12 @@ from redisolar.models import SiteCapacityTuple
 
 class CapacityReportDaoRedis(CapacityDaoBase, RedisDaoBase):
     """Persists and queries CapacityReports in Redis."""
+
     def update(self, meter_reading: MeterReading, **kwargs) -> None:
         # Uses the Redis client instance in self.redis by default.  If a
         # Pipeline object was provided, uses that instead -- Pipeline objects
         # offer the same Redis command API as normal Redis clients.
-        client = kwargs.get('pipeline', self.redis)
+        client = kwargs.get("pipeline", self.redis)
         capacity_ranking_key = self.key_schema.capacity_ranking_key()
         report = {meter_reading.site_id: meter_reading.current_capacity}
         client.zadd(capacity_ranking_key, report)
@@ -36,5 +37,9 @@ class CapacityReportDaoRedis(CapacityDaoBase, RedisDaoBase):
         # START Challenge #4
         # Remove the following line after you have added code to
         # get the real rank.
-        return 0
+        capacity_ranking_key = self.key_schema.capacity_ranking_key()
+        # highest capacity returns 0
+        rank = self.redis.zrevrank(capacity_ranking_key, site_id)
+
+        return rank
         # END Challenge #4
