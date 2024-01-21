@@ -2,6 +2,7 @@ from typing import Dict
 from typing import List
 from typing import Set
 
+from redis.client import Pipeline
 from redisolar.dao.base import SiteGeoDaoBase
 from redisolar.dao.base import SiteNotFound
 from redisolar.dao.redis.base import RedisDaoBase
@@ -18,7 +19,7 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
     def insert(self, site: Site, **kwargs):
         """Insert a Site into Redis."""
         hash_key = self.key_schema.site_hash_key(site.id)
-        client = kwargs.get("pipeline", self.redis)
+        client: Pipeline = kwargs.get("pipeline", self.redis)
         client.hset(hash_key, mapping=FlatSiteSchema().dump(site))  # type: ignore
 
         if not site.coordinate:
@@ -63,9 +64,14 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
     def _find_by_geo_with_capacity(self, query: GeoQuery, **kwargs) -> Set[Site]:
         # START Challenge #5
         # Your task: Get the sites matching the GEO query.
+        site_ids: List[str] = self.redis.georadius(
+            name=self.key_schema.site_geo_key(),
+            longitude=query.coordinate.lng,
+            latitude=query.coordinate.lat,
+            radius=query.radius,
+            unit=query.radius_unit.value,
+        )
         # END Challenge #5
-
-        p = self.redis.pipeline(transaction=False)
 
         # START Challenge #5
         #
@@ -74,12 +80,20 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
         #
         # Make sure to run any Redis commands against a Pipeline object
         # for better performance.
+        p = self.redis.pipeline(transaction=False)
+        for site_id in site_ids:
+            capacity_ranking_key = self.key_schema.capacity_ranking_key()
+            # CapacityReportDaoRedis.update() add the site_id (member) and capacity (score) to the sorted set
+            p.zscore(name=capacity_ranking_key, value=site_id)
+        capacity_list = p.execute()
+
+        scores: Dict[str, float] = dict(zip(site_ids, capacity_list))
         # END Challenge #5
 
         # Delete the next lines after you've populated a `site_ids`
         # and `scores` variable.
-        site_ids: List[str] = []
-        scores: Dict[str, float] = {}
+        # site_ids: List[str] = []
+        # scores: Dict[str, float] = {}
 
         for site_id in site_ids:
             if scores[site_id] and scores[site_id] > CAPACITY_THRESHOLD:

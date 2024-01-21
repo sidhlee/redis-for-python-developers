@@ -14,6 +14,10 @@ class CapacityReportDaoRedis(CapacityDaoBase, RedisDaoBase):
         # offer the same Redis command API as normal Redis clients.
         client = kwargs.get("pipeline", self.redis)
         capacity_ranking_key = self.key_schema.capacity_ranking_key()
+        # member(site_id): score(capacity)
+        # sorted set can have different member with the same score
+        # members with same score will be sorted based on the member name
+        # eg. apple: 1.0 will come before banana: 1.0
         report = {meter_reading.site_id: meter_reading.current_capacity}
         client.zadd(capacity_ranking_key, report)
 
