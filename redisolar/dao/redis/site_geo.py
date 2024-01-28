@@ -113,6 +113,11 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
         site_ids = self.redis.zrange(self.key_schema.site_geo_key(), 0, -1)
         sites = set()
 
+        # transaction=True (default) is used when we want to run multiple commands
+        # without other clients writing to the same keys in between.
+        # But, Redis doesn't rollback the transaction if one of the commands fails.
+        # It just continues executing the rest of the commands.
+        # -> Transaction in Redis can be misleading since it guarantees isolation, but not atomicity.
         p = self.redis.pipeline(transaction=False)
 
         for site_id in site_ids:
