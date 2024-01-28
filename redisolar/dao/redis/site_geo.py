@@ -120,6 +120,9 @@ class SiteGeoDaoRedis(SiteGeoDaoBase, RedisDaoBase):
             p.hgetall(key)
         site_hashes = p.execute()
 
+        # hgetall can return None if the key(sites:info:site_id) doesn't exist
+        site_hashes = [site_hash for site_hash in site_hashes if site_hash]
+
         for site_hash in site_hashes:
             sites.add(FlatSiteSchema().load(site_hash))
 
