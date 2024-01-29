@@ -11,6 +11,7 @@ from redisolar.dao.redis.key_schema import KeySchema
 
 class MinuteInterval(Enum):
     """Supported minute intervals."""
+
     ONE = 1
     FIVE = 5
     TEN = 10
@@ -40,26 +41,41 @@ class FixedRateLimiter(RateLimiterDaoBase, RedisDaoBase):
     12:00         99        OK
     12:05          2        OK
     12:10        101        RateLimitExceededException
+
+    Pros:
+    - space efficient: increments a counter instead of inserting all hits
+    - constant time: INCR O(1) + EXPIRE O(1) = O(1)
+
+    Cons:
+    - not as accurate as sliding window rate limiter
+      eg. A user can hit 2x of the max limit within the interval
+      When limit = 50, interval = 10 min, a user can hit 50 times at 11:59 and 50 times at 12:01
     """
-    def __init__(self,
-                 interval: MinuteInterval,
-                 max_hits: int,
-                 redis_client: Redis,
-                 key_schema: KeySchema = None,
-                 **kwargs):
+
+    def __init__(
+        self,
+        interval: MinuteInterval,
+        max_hits: int,
+        redis_client: Redis,
+        key_schema: KeySchema = None,
+        **kwargs
+    ):
+        # in minutes
         self.interval = interval
+        # expire after the interval has passed
         self.expiration = interval.value * 60
         self.max_hits = max_hits
         super().__init__(redis_client, key_schema, **kwargs)
 
     def _get_minute_of_day_block(self, dt: datetime.datetime) -> int:
         minute_of_day = dt.hour * 60 + dt.minute
-        return minute_of_day / self.interval.value
+        return minute_of_day // self.interval.value
 
     def _get_key(self, name: str) -> str:
         day_minute_block = self._get_minute_of_day_block(datetime.datetime.now())
-        return self.key_schema.fixed_rate_limiter_key(name, day_minute_block,
-                                                      self.max_hits)
+        return self.key_schema.fixed_rate_limiter_key(
+            name, day_minute_block, self.max_hits
+        )
 
     def hit(self, name: str) -> None:
         key = self._get_key(name)

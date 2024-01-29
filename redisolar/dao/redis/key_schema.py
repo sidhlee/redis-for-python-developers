@@ -12,6 +12,7 @@ def prefixed_key(f):
     Prefixes any string that the decorated method `f` returns with the value of
     the `prefix` attribute on the owner object `self`.
     """
+
     def prefixed_method(self, *args, **kwargs):
         key = f(self, *args, **kwargs)
         return f"{self.prefix}:{key}"
@@ -26,6 +27,7 @@ class KeySchema:
     These key names are used by the DAO classes. This class therefore contains
     a reference to all possible key names used by this application.
     """
+
     def __init__(self, prefix: str = DEFAULT_KEY_PREFIX):
         self.prefix = prefix
 
@@ -70,8 +72,9 @@ class KeySchema:
         return "sites:capacity:ranking"
 
     @prefixed_key
-    def day_metric_key(self, site_id: int, unit: MetricUnit,
-                       time: datetime.datetime) -> str:
+    def day_metric_key(
+        self, site_id: int, unit: MetricUnit, time: datetime.datetime
+    ) -> str:
         """
         metric:[unit-name]:[year-month-day]:[site_id]
         Redis type: sorted set
@@ -95,26 +98,34 @@ class KeySchema:
         return f"sites:feed:{site_id}"
 
     @prefixed_key
-    def fixed_rate_limiter_key(self, name: str, minute_block: int, max_hits: int) -> str:
+    def fixed_rate_limiter_key(
+        self, name: str, minute_block: int, max_hits: int
+    ) -> str:
         """
         limiter:[name]:[duration]:[max_hits]
         Redis type: string of type integer
         """
+        # need to include constants used by rate-limit rules
+        # in the key name to allow updating the rule without
+        # having to delete the key
         return f"limiter:{name}:{minute_block}:{max_hits}"
 
     @prefixed_key
-    def sliding_window_rate_limiter_key(self, name: str, window_size_ms: int,
-                                        max_hits: int) -> str:
+    def sliding_window_rate_limiter_key(
+        self, name: str, window_size_ms: int, max_hits: int
+    ) -> str:
         """
         limiter:[name]:[window_size_ms]:[max_hits]
         Redis type: string of type integer
         """
+        # including window_size_ms and max_hits allow updating the rule
+        # without having to delete the key.
+        # we want to place the things that are more likely to change at the beginning
         return f"limiter:{name}:{window_size_ms}:{max_hits}"
 
     @prefixed_key
     def timeseries_key(self, site_id: int, unit: MetricUnit) -> str:
         return f"sites:ts:{site_id}:{unit.value}"
-
 
     # Test keys
     @prefixed_key
